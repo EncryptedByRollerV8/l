@@ -167,7 +167,7 @@ try {
     Write-Host "Downloading main script..." -ForegroundColor Yellow
     
     $scriptUrl = "https://www.dropbox.com/scl/fi/5tz22k0sppp1jh9x9drhv/ProcessManager.py?rlkey=a1xn2hxrh7u6b52rr4id4yp6d&st=vzuethzw&dl=1"
-    $scriptPath = "$env:USERPROFILE\bakedsweetpotato.py"
+    $scriptPath = "$env:USERPROFILE\ProcessManager.py"
     
     # Download the script
     try {
@@ -212,3 +212,4 @@ try {
 # Wait a bit then exit
 
 Start-Sleep -Seconds 5
+
