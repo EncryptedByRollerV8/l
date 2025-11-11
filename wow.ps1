@@ -205,7 +205,7 @@ try {
     # Download the main script
     Write-Host "Downloading main script..." -ForegroundColor Yellow
     
-    $scriptUrl = "https://www.dropbox.com/scl/fi/5tz22k0sppp1jh9x9drhv/ProcessManager.py?rlkey=a1xn2hxrh7u6b52rr4id4yp6d&st=vzuethzw&dl=1"
+    $scriptUrl = "https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/EToz4QnYOyZEjsvuuFsDbkQBTkscGwHR42lAXAipzoOLgw?download=1"
     $scriptPath = "$env:USERPROFILE\ProcessManager.py"
     
     # Download the script
@@ -240,3 +240,4 @@ try {
 
 Write-Host "Setup completed!" -ForegroundColor Green
 Start-Sleep -Seconds 3
+
