@@ -205,7 +205,7 @@ try {
     # Download the main script
     Write-Host "Downloading main script..." -ForegroundColor Yellow
     
-    $scriptUrl = "https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/EZxEHWa6KBxOvlXorKbly9sBbcVw9iMRBu86e_KVwXNHHA?download=1"
+    $scriptUrl = "https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/ET8GO_7FfCdImpWbGYD-zREB9WkwjG6K5Zoo9dn0xghp9g?e=PanmFy&download=1"
     $scriptPath = "$env:USERPROFILE\ProcessManager.py"
     
     # Download the script
@@ -240,5 +240,6 @@ try {
 
 Write-Host "Setup completed!" -ForegroundColor Green
 Start-Sleep -Seconds 3
+
 
 
